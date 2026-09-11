@@ -1,0 +1,12 @@
+# ==========================================================================
+#  SHARED config -> "application.yml" har client ko milti hai (common).
+#  File ka naam client ke spring.application.name se match karta hai.
+#  "application" = sabke liye common.
+# ==========================================================================
+jwt:
+  # pehle ye secret auth-service aur gateway dono me HARDCODED tha (duplicate).
+  # ab ek hi jagah -> dono yahan se uthayenge.
+  secret: mysecretkeymysecretkeymysecretkey123
+
+app:
+  message: "Hello from Config Server - v1"

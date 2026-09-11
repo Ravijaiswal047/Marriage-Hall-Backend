@@ -1,0 +1,212 @@
+# ==========================================================================
+#  Marriage Hall - Microservices stack
+#  Ek command:  docker-compose up --build
+#  Startup order: mysql + discovery + config-server  ->  baaki services
+# ==========================================================================
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: mh-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: marriagehall
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks: [ mh-net ]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  discovery-server:
+    build: ./discovery-server
+    container_name: mh-discovery
+    ports: [ "8761:8761" ]
+    environment:
+      SERVER_PORT: 8761
+      LOKI_URL: http://loki:3100/loki/api/v1/push
+    networks: [ mh-net ]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8761/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ---------------- CONFIG SERVER (naya) ----------------
+  config-server:
+    build: ./config-server
+    container_name: mh-config
+    ports: [ "8888:8888" ]
+    volumes:
+      - ./config-repo:/config-repo
+    environment:
+      SERVER_PORT: 8888
+      LOKI_URL: http://loki:3100/loki/api/v1/push
+      SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCHLOCATIONS: file:/config-repo
+    networks: [ mh-net ]
+    healthcheck:
+      # /application/default -> shared config milti hai = ready proof
+      test: ["CMD", "wget", "-qO-", "http://localhost:8888/application/default"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ---------------- ZIPKIN (tracing UI) ----------------
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: mh-zipkin
+    ports: [ "9411:9411" ]
+    networks: [ mh-net ]
+
+  # ---------------- RABBITMQ (message broker) ----------------
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: mh-rabbitmq
+    ports: [ "5672:5672", "15672:15672" ]   # 5672 = AMQP, 15672 = management UI
+    networks: [ mh-net ]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  notification-service:
+    build: ./notification-service
+    container_name: mh-notification
+    ports: [ "8085:8085" ]
+    environment:
+      SERVER_PORT: 8085
+      SPRING_RABBITMQ_HOST: rabbitmq
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+      EUREKA_INSTANCE_PREFERIPADDRESS: "true"
+      LOKI_URL: http://loki:3100/loki/api/v1/push
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+      discovery-server: { condition: service_healthy }
+    networks: [ mh-net ]
+
+  # ---------------- LOKI + GRAFANA (centralized logging) ----------------
+  loki:
+    image: grafana/loki:2.9.8
+    container_name: mh-loki
+    ports: [ "3100:3100" ]
+    networks: [ mh-net ]
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: mh-grafana
+    ports: [ "3000:3000" ]
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on: [ loki ]
+    networks: [ mh-net ]
+
+  auth-service:
+    build: ./auth-service
+    container_name: mh-auth
+    ports: [ "9090:9090" ]
+    environment:
+      SERVER_PORT: 9090
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/auth_db?createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+      EUREKA_INSTANCE_PREFERIPADDRESS: "true"
+      LOKI_URL: http://loki:3100/loki/api/v1/push
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+    depends_on:
+      mysql: { condition: service_healthy }
+      discovery-server: { condition: service_healthy }
+      config-server: { condition: service_healthy }
+    networks: [ mh-net ]
+
+  hall-service:
+    build: ./hall-service
+    container_name: mh-hall
+    ports: [ "8087:8087" ]
+    environment:
+      SERVER_PORT: 8087
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/hall_db?createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+      EUREKA_INSTANCE_PREFERIPADDRESS: "true"
+      LOKI_URL: http://loki:3100/loki/api/v1/push
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+    depends_on:
+      mysql: { condition: service_healthy }
+      discovery-server: { condition: service_healthy }
+      config-server: { condition: service_healthy }
+    networks: [ mh-net ]
+
+  booking-service:
+    build: ./booking-service
+    container_name: mh-booking
+    ports: [ "8082:8082" ]
+    environment:
+      SERVER_PORT: 8082
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/booking_db?createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+      EUREKA_INSTANCE_PREFERIPADDRESS: "true"
+      LOKI_URL: http://loki:3100/loki/api/v1/push
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      SPRING_RABBITMQ_HOST: rabbitmq
+    depends_on:
+      mysql: { condition: service_healthy }
+      discovery-server: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    networks: [ mh-net ]
+
+  review-service:
+    build: ./review-service
+    container_name: mh-review
+    ports: [ "8086:8086" ]
+    environment:
+      SERVER_PORT: 8086
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/review_db?createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+      EUREKA_INSTANCE_PREFERIPADDRESS: "true"
+      LOKI_URL: http://loki:3100/loki/api/v1/push
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+    depends_on:
+      mysql: { condition: service_healthy }
+      discovery-server: { condition: service_healthy }
+    networks: [ mh-net ]
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: mh-gateway
+    ports: [ "8081:8081" ]
+    environment:
+      SERVER_PORT: 8081
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+      EUREKA_INSTANCE_PREFERIPADDRESS: "true"
+      LOKI_URL: http://loki:3100/loki/api/v1/push
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      APP_CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173,http://localhost:4200
+    depends_on:
+      discovery-server: { condition: service_healthy }
+      config-server: { condition: service_healthy }
+    networks: [ mh-net ]
+
+networks:
+  mh-net:
+    driver: bridge
+
+volumes:
+  mysql-data:

@@ -1,0 +1,9 @@
+# ==========================================================================
+#  SHARED config served to ALL config clients (file-based, editable at runtime)
+#  Edit this file, then POST /actuator/refresh on a client to apply LIVE.
+# ==========================================================================
+jwt:
+  secret: mysecretkeymysecretkeymysecretkey123
+
+app:
+  message: "Hello from Config Server - v1"

@@ -1,0 +1,16 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-server
+  profiles:
+    # "native" = config files filesystem/classpath se serve hote hain.
+    # Production me ise "git" karte hain (neeche explanation me).
+    active: native
+  cloud:
+    config:
+      server:
+        native:
+          # yahan se .yml files uthegi aur clients ko serve hongi
+          search-locations: classpath:/config

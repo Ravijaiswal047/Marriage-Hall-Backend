@@ -1,0 +1,92 @@
+server:
+  port: 8081
+
+
+
+#
+#  cloud:
+#    gateway:
+#      routes:
+#
+#        - id: auth-service
+#          uri: lb://AUTH-SERVICE
+#          predicates:
+#            - Path=/api/auth/**
+#
+#        - id: hall-service
+#          uri: lb://HALL-SERVICE
+#          predicates:
+#            - Path=/api/halls/**
+#
+#        - id: booking-service
+#          uri: lb://BOOKING-SERVICE
+#          predicates:
+#            - Path=/api/bookings/**
+#
+#        - id: review-service
+#          uri: lb://REVIEW-SERVICE
+#          predicates:
+#            - Path=/api/reviews/**
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+
+
+spring:
+  application:
+    name: api-gateway
+  config:
+    import: optional:configserver:http://localhost:8888
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: auth-service
+              uri: lb://AUTH-SERVICE
+              predicates:
+                - Path=/api/auth/**
+
+            - id: hall-service
+              uri: lb://HALL-SERVICE
+              predicates:
+                - Path=/api/halls/**
+
+            - id: booking-service
+              uri: lb://BOOKING-SERVICE
+              predicates:
+                - Path=/api/bookings/**
+
+            - id: payment-service
+              uri: lb://BOOKING-SERVICE
+              predicates:
+                - Path=/api/payments/**
+
+            - id: vendor-dashboard-service
+              uri: lb://BOOKING-SERVICE
+              predicates:
+                - Path=/api/vendor/**
+
+
+            - id: review-service
+              uri: lb://REVIEW-SERVICE
+              predicates:
+                - Path=/api/reviews/**
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: http://localhost:9411/api/v2/spans
+
+logging:
+  level:
+    com.marriagehall.gateway: DEBUG
