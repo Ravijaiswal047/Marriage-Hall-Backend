@@ -1,0 +1,2459 @@
+{
+  "info": {
+    "_postman_id": "c8a412f9-710e-436f-b258-94119d887a01",
+    "name": "MarriageHall Microservices API",
+    "description": "Comprehensive, production-grade Postman API testing collection for the MarriageHall Spring Boot microservices ecosystem.\n\nAll protected APIs use Bearer {{accessToken}}.\n\nIncludes complete coverage of:\n- API Gateway (Port 8081)\n- Auth Service (Port 9090)\n- Hall Service (Port 8087)\n- Booking Service & Payments (Port 8082)\n- Review Service (Port 8086)\n- Eureka Discovery (Port 8761)\n- Config Server (Port 8888)\n- Negative Tests & Business Rule Invariants",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 - Health & Infrastructure",
+      "description": "System health checks, Eureka service registry discovery, and Config Server properties.",
+      "item": [
+        {
+          "name": "01 - Gateway Actuator Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/info",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "info"
+              ],
+              "query": []
+            },
+            "description": "Verify API Gateway is running and healthy."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - Eureka Service Discovery - Registered Apps",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{discoveryServerUrl}}/eureka/apps",
+              "host": [
+                "{{discoveryServerUrl}}"
+              ],
+              "path": [
+                "eureka",
+                "apps"
+              ],
+              "query": []
+            },
+            "description": "Query Eureka server to confirm all microservices are registered as UP."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Eureka registry contains microservices\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.applications).to.be.an(\"object\");",
+                  "    const apps = data.applications.application.map(a => a.name);",
+                  "    console.log(\"Registered Eureka Apps:\", apps);",
+                  "    pm.expect(apps).to.include.members([\"API-GATEWAY\", \"AUTH-SERVICE\", \"HALL-SERVICE\", \"BOOKING-SERVICE\"]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Config Server - Application Shared Config",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{configServerUrl}}/application/default",
+              "host": [
+                "{{configServerUrl}}"
+              ],
+              "path": [
+                "application",
+                "default"
+              ],
+              "query": []
+            },
+            "description": "Fetch global configuration properties managed centrally by Config Server."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Config server returned environment profile\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property(\"name\");",
+                  "    pm.expect(data.name).to.eql(\"application\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 - Config Server - Hall Service Config",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{configServerUrl}}/hall-service/default",
+              "host": [
+                "{{configServerUrl}}"
+              ],
+              "path": [
+                "hall-service",
+                "default"
+              ],
+              "query": []
+            },
+            "description": "Fetch hall-service configuration properties from native config-repo."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 - Authentication Service",
+      "description": "User registration (Vendor & Customer), JWT login, and authenticated user profile inspection.",
+      "item": [
+        {
+          "name": "01 - Register Vendor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signup"
+              ],
+              "query": []
+            },
+            "description": "Register a new VENDOR user. Stores JWT token in {{accessToken}} and {{vendorToken}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Royal Palace Vendor\",\n  \"email\": \"{{vendorEmail}}\",\n  \"password\": \"{{testPassword}}\",\n  \"role\": \"VENDOR\",\n  \"phone\": \"+91 98765 43210\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200 or 409 (if already registered)\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 409]);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Vendor registration returned token and userId\", function () {",
+                  "        pm.expect(data).to.have.property(\"token\");",
+                  "        pm.expect(data).to.have.property(\"userId\");",
+                  "    });",
+                  "    if (data.token) {",
+                  "        pm.environment.set(\"accessToken\", data.token);",
+                  "        pm.environment.set(\"vendorToken\", data.token);",
+                  "    }",
+                  "    if (data.userId) {",
+                  "        pm.environment.set(\"vendorId\", data.userId);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - Register Customer User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signup"
+              ],
+              "query": []
+            },
+            "description": "Register a regular customer USER. Stores JWT token in {{accessToken}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Amit Kumar Customer\",\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{testPassword}}\",\n  \"role\": \"USER\",\n  \"phone\": \"+91 91234 56789\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 200 or 409 (if already registered)\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 409]);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Customer registration returned token and userId\", function () {",
+                  "        pm.expect(data).to.have.property(\"token\");",
+                  "        pm.expect(data).to.have.property(\"userId\");",
+                  "    });",
+                  "    if (data.token) {",
+                  "        pm.environment.set(\"accessToken\", data.token);",
+                  "    }",
+                  "    if (data.userId) {",
+                  "        pm.environment.set(\"userId\", data.userId);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Login Vendor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ],
+              "query": []
+            },
+            "description": "Authenticate as VENDOR and update {{accessToken}} with vendor credentials.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{vendorEmail}}\",\n  \"password\": \"{{testPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Vendor login returns valid JWT token\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property(\"token\");",
+                  "    pm.expect(data.role).to.eql(\"VENDOR\");",
+                  "    pm.environment.set(\"accessToken\", data.token);",
+                  "    pm.environment.set(\"vendorToken\", data.token);",
+                  "    if (data.userId) {",
+                  "        pm.environment.set(\"vendorId\", data.userId);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 - Login Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ],
+              "query": []
+            },
+            "description": "Authenticate as customer USER and update {{accessToken}} with customer credentials.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{testPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Customer login returns valid JWT token\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property(\"token\");",
+                  "    pm.expect(data.role).to.eql(\"USER\");",
+                  "    pm.environment.set(\"accessToken\", data.token);",
+                  "    if (data.userId) {",
+                  "        pm.environment.set(\"userId\", data.userId);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 - Get Current User Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ],
+              "query": []
+            },
+            "description": "Retrieve profile details for currently logged-in user using Bearer {{accessToken}}."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"User profile matches logged in user\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property(\"id\");",
+                  "    pm.expect(data).to.have.property(\"email\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Halls Service",
+      "description": "Hall catalog search with faceted filters, city autocomplete, vendor hall management, and config refresh.",
+      "item": [
+        {
+          "name": "01 - Search & Browse Halls (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/halls?page=0&size=12&sortBy=price&direction=asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "halls"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "12"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "price"
+                },
+                {
+                  "key": "direction",
+                  "value": "asc"
+                }
+              ]
+            },
+            "description": "Public catalog search endpoint with pagination, faceted filtering (city, price, capacity, ac, parking), and sorting."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is a valid Spring Data Page object\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property(\"content\");",
+                  "    pm.expect(data).to.have.property(\"pageable\");",
+                  "    pm.expect(data).to.have.property(\"totalElements\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - Get Distinct Cities (Public Autocomplete)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/halls/cities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "halls",
+                "cities"
+              ],
+              "query": []
+            },
+            "description": "Returns distinct list of active hall cities for frontend search dropdowns."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is an array of city strings\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.be.an(\"array\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Create Marriage Hall (Vendor Only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/halls/create-hall",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "halls",
+                "create-hall"
+              ],
+              "query": []
+            },
+            "description": "Create a new marriage hall listing. Requires VENDOR role via Bearer {{accessToken}}. Automatically saves hallId in environment.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Grand Imperial Banquet & Palace\",\n  \"location\": \"Sector 62, Noida\",\n  \"city\": \"Noida\",\n  \"state\": \"Uttar Pradesh\",\n  \"address\": \"Plot 14, Commercial Area, Near Electronic City Metro Station\",\n  \"landmark\": \"Near Fortis Hospital\",\n  \"pincode\": \"201309\",\n  \"latitude\": 28.628,\n  \"longitude\": 77.3649,\n  \"price\": 150000.0,\n  \"vegPricePerPlate\": 1200.0,\n  \"nonVegPricePerPlate\": 1500.0,\n  \"capacity\": 800,\n  \"floatingCapacity\": 1200,\n  \"description\": \"Luxurious 5-star banquet hall equipped with central air conditioning, crystal chandeliers, royal bride dressing suite, and expansive lush green party lawns.\",\n  \"coverImageUrl\": \"https://images.unsplash.com/photo-1519167758481-83f550bb49b3\",\n  \"images\": [\n    \"https://images.unsplash.com/photo-1519741497674-611481863552\",\n    \"https://images.unsplash.com/photo-1464366400600-7168b8af9bc3\"\n  ],\n  \"hasAc\": true,\n  \"hasParking\": true,\n  \"parkingCapacity\": 250,\n  \"roomsCount\": 8,\n  \"outsideCateringAllowed\": false,\n  \"djAllowed\": true,\n  \"alcoholAllowed\": false,\n  \"powerBackup\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Hall created successfully with ACTIVE status and valid UUID\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property(\"id\");",
+                  "    pm.expect(data.name).to.eql(\"Grand Imperial Banquet & Palace\");",
+                  "    pm.expect(data.status).to.eql(\"ACTIVE\");",
+                  "    pm.environment.set(\"hallId\", data.id);",
+                  "    console.log(\"Saved hallId:\", data.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 - Get Hall by ID (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/halls/{{hallId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "halls",
+                "{{hallId}}"
+              ],
+              "query": []
+            },
+            "description": "Retrieve detailed specifications and amenities of a single hall by ID."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Hall details match expected hallId\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.id).to.eql(pm.environment.get(\"hallId\"));",
+                  "    pm.expect(data).to.have.property(\"price\");",
+                  "    pm.expect(data).to.have.property(\"capacity\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 - Get Vendor Halls (Vendor/Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/halls/vendor/{{vendorId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "halls",
+                "vendor",
+                "{{vendorId}}"
+              ],
+              "query": []
+            },
+            "description": "Get all marriage halls created and owned by the vendor."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Returns list of halls for vendor\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.be.an(\"array\");",
+                  "    pm.expect(data.length).to.be.at.least(1);",
+                  "    pm.expect(data[0].vendorId).to.eql(pm.environment.get(\"vendorId\"));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 - Update Hall (Vendor/Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/halls/{{hallId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "halls",
+                "{{hallId}}"
+              ],
+              "query": []
+            },
+            "description": "Update hall pricing, capacity, and details. Caller must own the hall or be ADMIN.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Grand Imperial Banquet & Palace (Renovated)\",\n  \"location\": \"Sector 62, Noida\",\n  \"city\": \"Noida\",\n  \"state\": \"Uttar Pradesh\",\n  \"price\": 160000.0,\n  \"capacity\": 850,\n  \"hasAc\": true,\n  \"hasParking\": true,\n  \"parkingCapacity\": 300,\n  \"description\": \"Updated 5-star banquet hall with newly expanded parking and luxury chandeliers.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Hall updated successfully\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.name).to.include(\"Renovated\");",
+                  "    pm.expect(data.price).to.eql(160000.0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 - Refresh Demo Config Message",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/halls/config/message",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "halls",
+                "config",
+                "message"
+              ],
+              "query": []
+            },
+            "description": "Verify Spring Cloud Config Server @RefreshScope dynamic configuration reloading."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 - Filter Halls by City & Amenities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/halls?city=Noida&minPrice=100000&maxPrice=200000&hasAc=true&hasParking=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "halls"
+              ],
+              "query": [
+                {
+                  "key": "city",
+                  "value": "Noida"
+                },
+                {
+                  "key": "minPrice",
+                  "value": "100000"
+                },
+                {
+                  "key": "maxPrice",
+                  "value": "200000"
+                },
+                {
+                  "key": "hasAc",
+                  "value": "true"
+                },
+                {
+                  "key": "hasParking",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Filter active halls using multifaceted criteria (city, minPrice, maxPrice, hasAc, hasParking)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Filtered results match criteria\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.content).to.be.an(\"array\");",
+                  "    pm.expect(data.content.length).to.be.at.least(1);",
+                  "    pm.expect(data.content[0].city).to.eql(\"Noida\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Bookings Service",
+      "description": "Slot availability verification, booking creation, lifecycle state changes, and user booking history.",
+      "item": [
+        {
+          "name": "01 - Check Slot Availability for Date (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/availability/{{hallId}}?date={{futureBookingDate}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "availability",
+                "{{hallId}}"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "{{futureBookingDate}}"
+                }
+              ]
+            },
+            "description": "Check real-time slot availability (MORNING, EVENING, FULL_DAY) for a hall on a target date."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Slot availability contains expected date and slots\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property(\"available\");",
+                  "    pm.expect(data).to.have.property(\"availableSlots\");",
+                  "    pm.expect(data).to.have.property(\"bookedSlots\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - Get Booked Dates in Range (Calendar View)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/booked-dates/{{hallId}}?startDate={{futureBookingDate}}&endDate={{futureBookingDateTomorrow}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "booked-dates",
+                "{{hallId}}"
+              ],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "{{futureBookingDate}}"
+                },
+                {
+                  "key": "endDate",
+                  "value": "{{futureBookingDateTomorrow}}"
+                }
+              ]
+            },
+            "description": "Returns all booked slots in a date range for frontend interactive calendar rendering."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Returns array of slot availability entries\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.be.an(\"array\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Create Booking (Customer User)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "create"
+              ],
+              "query": []
+            },
+            "description": "Create a booking reservation for a hall using Bearer {{accessToken}}. Calls Hall Service via Feign, sets status to PENDING, publishes RabbitMQ event. Stores bookingId.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hallId\": \"{{hallId}}\",\n  \"bookingDate\": \"{{futureBookingDate}}\",\n  \"slot\": \"FULL_DAY\",\n  \"eventType\": \"WEDDING\",\n  \"guestCount\": 500,\n  \"customerName\": \"Amit Kumar\",\n  \"customerPhone\": \"+91 91234 56789\",\n  \"specialRequests\": \"Royal red carpet welcome and mandap stage lighting\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Booking created with PENDING status and valid total amount\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property(\"id\");",
+                  "    pm.expect(data.status).to.eql(\"PENDING\");",
+                  "    pm.expect(data.totalAmount).to.be.above(0);",
+                  "    pm.environment.set(\"bookingId\", data.id);",
+                  "    console.log(\"Saved bookingId:\", data.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 - Get Booking Details by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/{{bookingId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "{{bookingId}}"
+              ],
+              "query": []
+            },
+            "description": "Get full composite booking details including embedded hall metadata from Hall Service."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Composite details contain booking and hall info\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property(\"booking\");",
+                  "    pm.expect(data).to.have.property(\"hall\");",
+                  "    pm.expect(data.booking.id).to.eql(pm.environment.get(\"bookingId\"));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 - Get Booking Financial Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/{{bookingId}}/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "{{bookingId}}",
+                "summary"
+              ],
+              "query": []
+            },
+            "description": "Calculates total amount, paid amount from payment repository, and remaining balance due."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Financial summary contains payment calculations\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property(\"totalAmount\");",
+                  "    pm.expect(data).to.have.property(\"paidAmount\");",
+                  "    pm.expect(data).to.have.property(\"dueAmount\");",
+                  "    pm.expect(data).to.have.property(\"isPaid\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 - Get My Bookings (Authenticated Customer)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/my-bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "my-bookings"
+              ],
+              "query": []
+            },
+            "description": "Fetch all booking reservations associated with the authenticated customer."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Returns list of customer bookings\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.be.an(\"array\");",
+                  "    pm.expect(data.length).to.be.at.least(1);",
+                  "    pm.expect(data[0].userId).to.eql(pm.environment.get(\"userId\"));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 - Get Bookings by User ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/user/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "user",
+                "{{userId}}"
+              ],
+              "query": []
+            },
+            "description": "Query bookings filtered by explicit user UUID."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 - Update Booking Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/{{bookingId}}/status?status=CONFIRMED",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "{{bookingId}}",
+                "status"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "CONFIRMED"
+                }
+              ]
+            },
+            "description": "Direct administrative or system status update for a booking."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Status transitioned to CONFIRMED\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.status).to.eql(\"CONFIRMED\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "09 - Cancel Booking",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/{{bookingId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "{{bookingId}}",
+                "cancel"
+              ],
+              "query": []
+            },
+            "description": "Cancel a booking. Sets status to CANCELLED."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Booking successfully cancelled\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.status).to.eql(\"CANCELLED\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Payments Service",
+      "description": "Advance and final settlement payment processing with HTTP Idempotency-Key guarantees.",
+      "item": [
+        {
+          "name": "01 - Pay Advance (Confirms Booking)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKeyAdvance}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/advance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "advance"
+              ],
+              "query": []
+            },
+            "description": "Process advance token payment. Checks idempotency, records SUCCESS payment, and automatically moves PENDING booking to CONFIRMED. Saves paymentId.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookingId\": \"{{bookingId}}\",\n  \"amount\": 50000.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Payment recorded successfully with SUCCESS status\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property(\"id\");",
+                  "    pm.expect(data.paymentStatus).to.eql(\"SUCCESS\");",
+                  "    pm.expect(data.paymentType).to.eql(\"ADVANCE\");",
+                  "    pm.expect(data.idempotencyKey).to.eql(pm.environment.get(\"idempotencyKeyAdvance\"));",
+                  "    pm.environment.set(\"paymentId\", data.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - Verify Payment Idempotency (Replay Same Key)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKeyAdvance}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/advance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "advance"
+              ],
+              "query": []
+            },
+            "description": "Re-send identical payment request with SAME Idempotency-Key. Verifies payment is NOT charged twice and returns original record.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookingId\": \"{{bookingId}}\",\n  \"amount\": 50000.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 (Idempotent response)\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Returns identical payment entity without duplicate charge\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.id).to.eql(pm.environment.get(\"paymentId\"));",
+                  "    pm.expect(data.paymentStatus).to.eql(\"SUCCESS\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Pay Final Settlement",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKeyFinal}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/final",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "final"
+              ],
+              "query": []
+            },
+            "description": "Process final payment installment. Validates total paid does not exceed total due.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookingId\": \"{{bookingId}}\",\n  \"amount\": 50000.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 or 409 (if exceeding balance)\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 409]);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.paymentType).to.eql(\"FINAL\");",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 - Vendor Dashboard",
+      "description": "Vendor KPI statistics and aggregated bookings across all vendor-owned halls.",
+      "item": [
+        {
+          "name": "01 - Get Vendor Dashboard Stats (KPIs)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/vendor/dashboard/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "vendor",
+                "dashboard",
+                "stats"
+              ],
+              "query": []
+            },
+            "description": "Aggregated business metrics: total halls, total bookings, revenue, received payments, and pending dues. Requires VENDOR token in {{accessToken}}."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Dashboard contains complete financial and booking KPIs\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property(\"totalHalls\");",
+                  "    pm.expect(data).to.have.property(\"totalBookings\");",
+                  "    pm.expect(data).to.have.property(\"totalRevenue\");",
+                  "    pm.expect(data).to.have.property(\"receivedAmount\");",
+                  "    pm.expect(data).to.have.property(\"dueAmount\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - Get Vendor Bookings List",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/vendor/dashboard/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "vendor",
+                "dashboard",
+                "bookings"
+              ],
+              "query": []
+            },
+            "description": "Detailed list of all customer bookings across all halls owned by the authenticated vendor. Requires VENDOR token in {{accessToken}}."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Returns list of vendor booking records\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.be.an(\"array\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 - Reviews Service",
+      "description": "Customer reviews, 1-5 star ratings, hall review listings, and aggregate average rating calculation.",
+      "item": [
+        {
+          "name": "01 - Add Review for Hall",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/reviews/add",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reviews",
+                "add"
+              ],
+              "query": []
+            },
+            "description": "Post a new customer review and rating (1-5 stars) for a hall. Uses Bearer {{accessToken}}. Stores reviewId.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hallId\": \"{{hallId}}\",\n  \"rating\": 5,\n  \"comment\": \"Outstanding venue! The lighting, grand entrance, and air conditioning were top-notch. Our wedding was unforgettable!\",\n  \"reviewerName\": \"Amit Kumar\",\n  \"reviewerAvatar\": \"https://i.pravatar.cc/150?u=amit\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Review added successfully with 5 star rating\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.have.property(\"id\");",
+                  "    pm.expect(data.rating).to.eql(5);",
+                  "    pm.environment.set(\"reviewId\", data.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - Get Hall Reviews (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reviews/{{hallId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reviews",
+                "{{hallId}}"
+              ],
+              "query": []
+            },
+            "description": "Public list of all verified customer reviews and ratings for the specified hall."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Returns array of reviews for hall\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data).to.be.an(\"array\");",
+                  "    pm.expect(data.length).to.be.at.least(1);",
+                  "    pm.expect(data[0].hallId).to.eql(pm.environment.get(\"hallId\"));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Get Hall Average Rating (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/reviews/{{hallId}}/average",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reviews",
+                "{{hallId}}",
+                "average"
+              ],
+              "query": []
+            },
+            "description": "Returns dynamically calculated average star rating for the specified hall."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Average rating is a valid decimal number between 0 and 5\", function () {",
+                  "    const avg = parseFloat(pm.response.text());",
+                  "    pm.expect(avg).to.be.within(1.0, 5.0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 - Negative Tests & Business Rules",
+      "description": "Exhaustive error handling and security verification: 400 Validation, 401 Unauthorized, 403 Forbidden, 404 Not Found, 409 Conflict.",
+      "item": [
+        {
+          "name": "01 - Auth - Missing Required Fields (Expect 400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signup"
+              ],
+              "query": []
+            },
+            "description": "Sending empty body to signup must fail Bean Validation (@NotBlank, @NotNull) and return 400 Bad Request.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains validationErrors object\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.status).to.eql(400);",
+                  "    pm.expect(data).to.have.property(\"validationErrors\");",
+                  "    pm.expect(data.validationErrors).to.have.property(\"email\");",
+                  "    pm.expect(data.validationErrors).to.have.property(\"password\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 - Auth - Duplicate Email Signup (Expect 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signup"
+              ],
+              "query": []
+            },
+            "description": "Registering an email that already exists in MySQL must throw EmailAlreadyExistsException and return 409 Conflict.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Duplicate User Test\",\n  \"email\": \"{{vendorEmail}}\",\n  \"password\": \"{{testPassword}}\",\n  \"role\": \"VENDOR\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 409 Conflict\", function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "pm.test(\"Error message mentions existing email\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.message.toLowerCase()).to.include(\"already exists\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 - Auth - Login with Wrong Password (Expect 401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ],
+              "query": []
+            },
+            "description": "Supplying incorrect password must fail BCrypt match and return 401 Unauthorized.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{vendorEmail}}\",\n  \"password\": \"{{wrongPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401 Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test(\"Error message reports Invalid email or password\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.message).to.eql(\"Invalid email or password\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 - Gateway - Missing Bearer Token on Protected API (Expect 401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ],
+              "query": []
+            },
+            "description": "Invoking protected API without Authorization header must be blocked by Gateway JwtAuthenticationFilter with 401 Unauthorized."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401 Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 - Gateway - Invalid / Malformed JWT Token (Expect 401)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{invalidToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ],
+              "query": []
+            },
+            "description": "Tampered or invalid signature JWT must be rejected by Gateway with 401 Unauthorized."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401 Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 - Halls - Customer Role Creating Hall (Expect 403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/halls/create-hall",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "halls",
+                "create-hall"
+              ],
+              "query": []
+            },
+            "description": "Customer (Role: USER) attempting to create a hall must be rejected with 403 Forbidden ('Only vendors can create halls').",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Unauthorized Customer Banquet\",\n  \"location\": \"Delhi\",\n  \"price\": 50000.0,\n  \"capacity\": 200\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 403 Forbidden\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "",
+                  "pm.test(\"Error message specifies only vendors can create halls\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.message).to.include(\"Only vendors can create halls\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 - Halls - Get Hall by Non-Existent UUID (Expect 404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/halls/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "halls",
+                "00000000-0000-0000-0000-000000000000"
+              ],
+              "query": []
+            },
+            "description": "Requesting an unknown hall UUID must throw ResourceNotFoundException and return 404 Not Found."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test(\"Error message indicates hall not found\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.message).to.include(\"not found\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 - Bookings - Booking Date in Past (Expect 400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "create"
+              ],
+              "query": []
+            },
+            "description": "Booking date in the past must fail @Future validation constraint and return 400 Bad Request.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hallId\": \"{{hallId}}\",\n  \"bookingDate\": \"2020-01-01\",\n  \"slot\": \"FULL_DAY\",\n  \"customerName\": \"Past Date Tester\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Validation error points to bookingDate in future\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.validationErrors).to.have.property(\"bookingDate\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "09 - Bookings - Double Booking Same Slot Collision (Expect 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bookings/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bookings",
+                "create"
+              ],
+              "query": []
+            },
+            "description": "Attempting to book a hall on an already booked slot and date must trigger BusinessRuleException and return 409 Conflict.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hallId\": \"{{hallId}}\",\n  \"bookingDate\": \"{{futureBookingDate}}\",\n  \"slot\": \"FULL_DAY\",\n  \"customerName\": \"Double Booking Colliding User\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 409 Conflict\", function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "pm.test(\"Error message indicates hall is already booked\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.message).to.include(\"already booked\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "10 - Payments - Missing Idempotency-Key Header (Expect 400 or 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/advance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "advance"
+              ],
+              "query": []
+            },
+            "description": "Omitting the mandatory Idempotency-Key header must be rejected with 400 Bad Request or 409 BusinessRuleException.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookingId\": \"{{bookingId}}\",\n  \"amount\": 1000.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400 or 409\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 409]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "11 - Payments - Amount Exceeds Due Amount (Expect 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "excess-amount-test-key",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/advance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payments",
+                "advance"
+              ],
+              "query": []
+            },
+            "description": "Paying more than total booking cost must throw BusinessRuleException ('exceeds remaining due amount') with 409 Conflict.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookingId\": \"{{bookingId}}\",\n  \"amount\": 999999999.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 409 Conflict\", function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "pm.test(\"Error message mentions exceeds remaining due\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.message).to.include(\"exceeds remaining due\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "12 - Reviews - Rating Out of Range > 5 (Expect 400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/reviews/add",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "reviews",
+                "add"
+              ],
+              "query": []
+            },
+            "description": "Rating greater than 5 must fail @Max(5) Bean Validation and return 400 Bad Request.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hallId\": \"{{hallId}}\",\n  \"rating\": 7,\n  \"comment\": \"Illegal rating test\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test(\"Validation error flags rating\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.validationErrors).to.have.property(\"rating\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "13 - Vendor - Customer Denied Dashboard Access (Expect 409)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/vendor/dashboard/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "vendor",
+                "dashboard",
+                "stats"
+              ],
+              "query": []
+            },
+            "description": "Customer user accessing Vendor Dashboard must be rejected with 409 Conflict ('Only VENDOR can access the vendor dashboard')."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 409 Conflict\", function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "pm.test(\"Error message rejects non-vendor caller\", function () {",
+                  "    const data = pm.response.json();",
+                  "    pm.expect(data.message).to.include(\"Only VENDOR can access\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
