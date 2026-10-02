@@ -2455,5 +2455,152 @@
         }
       ]
     }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081",
+      "type": "string"
+    },
+    {
+      "key": "gatewayUrl",
+      "value": "http://localhost:8081",
+      "type": "string"
+    },
+    {
+      "key": "authServiceUrl",
+      "value": "http://localhost:9090",
+      "type": "string"
+    },
+    {
+      "key": "hallServiceUrl",
+      "value": "http://localhost:8087",
+      "type": "string"
+    },
+    {
+      "key": "bookingServiceUrl",
+      "value": "http://localhost:8082",
+      "type": "string"
+    },
+    {
+      "key": "reviewServiceUrl",
+      "value": "http://localhost:8086",
+      "type": "string"
+    },
+    {
+      "key": "notificationServiceUrl",
+      "value": "http://localhost:8085",
+      "type": "string"
+    },
+    {
+      "key": "discoveryServerUrl",
+      "value": "http://localhost:8761",
+      "type": "string"
+    },
+    {
+      "key": "configServerUrl",
+      "value": "http://localhost:8888",
+      "type": "string"
+    },
+    {
+      "key": "zipkinUrl",
+      "value": "http://localhost:9411",
+      "type": "string"
+    },
+    {
+      "key": "grafanaUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "rabbitmqUrl",
+      "value": "http://localhost:15672",
+      "type": "string"
+    },
+    {
+      "key": "vendorEmail",
+      "value": "royal.vendor@example.com",
+      "type": "string"
+    },
+    {
+      "key": "customerEmail",
+      "value": "amit.customer@example.com",
+      "type": "string"
+    },
+    {
+      "key": "testPassword",
+      "value": "password123",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "vendorToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "vendorId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "hallId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "bookingId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paymentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "reviewId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "futureBookingDate",
+      "value": "2026-11-20",
+      "type": "string"
+    },
+    {
+      "key": "futureBookingDateTomorrow",
+      "value": "2026-11-21",
+      "type": "string"
+    },
+    {
+      "key": "idempotencyKeyAdvance",
+      "value": "idem-adv-key-001",
+      "type": "string"
+    },
+    {
+      "key": "idempotencyKeyFinal",
+      "value": "idem-fin-key-001",
+      "type": "string"
+    },
+    {
+      "key": "invalidToken",
+      "value": "invalid_malformed_token_for_negative_testing",
+      "type": "string"
+    },
+    {
+      "key": "wrongPassword",
+      "value": "incorrectPassword999!",
+      "type": "string"
+    }
   ]
 }

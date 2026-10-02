@@ -20,7 +20,8 @@ services:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 15
+      start_period: 30s
 
   discovery-server:
     build: ./discovery-server
@@ -29,12 +30,15 @@ services:
     environment:
       SERVER_PORT: 8761
       LOKI_URL: http://loki:3100/loki/api/v1/push
+      JAVA_TOOL_OPTIONS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx256m -Djava.security.egd=file:/dev/./urandom"
+      SPRING_MAIN_LAZY_INITIALIZATION: "true"
     networks: [ mh-net ]
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8761/"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 20
+      start_period: 60s
 
   # ---------------- CONFIG SERVER (naya) ----------------
   config-server:
@@ -47,13 +51,16 @@ services:
       SERVER_PORT: 8888
       LOKI_URL: http://loki:3100/loki/api/v1/push
       SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCHLOCATIONS: file:/config-repo
+      JAVA_TOOL_OPTIONS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx256m -Djava.security.egd=file:/dev/./urandom"
+      SPRING_MAIN_LAZY_INITIALIZATION: "true"
     networks: [ mh-net ]
     healthcheck:
       # /application/default -> shared config milti hai = ready proof
       test: ["CMD", "wget", "-qO-", "http://localhost:8888/application/default"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 20
+      start_period: 60s
 
   # ---------------- ZIPKIN (tracing UI) ----------------
   zipkin:
@@ -72,7 +79,8 @@ services:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 15s
       timeout: 15s
-      retries: 10
+      retries: 15
+      start_period: 30s
 
   notification-service:
     build: ./notification-service
@@ -84,6 +92,8 @@ services:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
       EUREKA_INSTANCE_PREFERIPADDRESS: "true"
       LOKI_URL: http://loki:3100/loki/api/v1/push
+      JAVA_TOOL_OPTIONS: "-XX:TieredStopAtLevel=1 -Xms64m -Xmx256m -Djava.security.egd=file:/dev/./urandom"
+      SPRING_MAIN_LAZY_INITIALIZATION: "true"
     depends_on:
       rabbitmq: { condition: service_healthy }
       discovery-server: { condition: service_healthy }
@@ -122,7 +132,9 @@ services:
       EUREKA_INSTANCE_PREFERIPADDRESS: "true"
       LOKI_URL: http://loki:3100/loki/api/v1/push
       MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
-      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      CONFIG_SERVER_URL: http://config-server:8888
+      JAVA_TOOL_OPTIONS: "-XX:TieredStopAtLevel=1 -Xms128m -Xmx384m -Djava.security.egd=file:/dev/./urandom"
+      SPRING_MAIN_LAZY_INITIALIZATION: "true"
     depends_on:
       mysql: { condition: service_healthy }
       discovery-server: { condition: service_healthy }
@@ -142,7 +154,9 @@ services:
       EUREKA_INSTANCE_PREFERIPADDRESS: "true"
       LOKI_URL: http://loki:3100/loki/api/v1/push
       MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
-      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      CONFIG_SERVER_URL: http://config-server:8888
+      JAVA_TOOL_OPTIONS: "-XX:TieredStopAtLevel=1 -Xms128m -Xmx384m -Djava.security.egd=file:/dev/./urandom"
+      SPRING_MAIN_LAZY_INITIALIZATION: "true"
     depends_on:
       mysql: { condition: service_healthy }
       discovery-server: { condition: service_healthy }
@@ -163,6 +177,8 @@ services:
       LOKI_URL: http://loki:3100/loki/api/v1/push
       MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
       SPRING_RABBITMQ_HOST: rabbitmq
+      JAVA_TOOL_OPTIONS: "-XX:TieredStopAtLevel=1 -Xms128m -Xmx384m -Djava.security.egd=file:/dev/./urandom"
+      SPRING_MAIN_LAZY_INITIALIZATION: "true"
     depends_on:
       mysql: { condition: service_healthy }
       discovery-server: { condition: service_healthy }
@@ -182,6 +198,8 @@ services:
       EUREKA_INSTANCE_PREFERIPADDRESS: "true"
       LOKI_URL: http://loki:3100/loki/api/v1/push
       MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      JAVA_TOOL_OPTIONS: "-XX:TieredStopAtLevel=1 -Xms128m -Xmx384m -Djava.security.egd=file:/dev/./urandom"
+      SPRING_MAIN_LAZY_INITIALIZATION: "true"
     depends_on:
       mysql: { condition: service_healthy }
       discovery-server: { condition: service_healthy }
@@ -197,8 +215,10 @@ services:
       EUREKA_INSTANCE_PREFERIPADDRESS: "true"
       LOKI_URL: http://loki:3100/loki/api/v1/push
       MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
-      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      CONFIG_SERVER_URL: http://config-server:8888
       APP_CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173,http://localhost:4200
+      JAVA_TOOL_OPTIONS: "-XX:TieredStopAtLevel=1 -Xms128m -Xmx256m -Djava.security.egd=file:/dev/./urandom"
+      SPRING_MAIN_LAZY_INITIALIZATION: "true"
     depends_on:
       discovery-server: { condition: service_healthy }
       config-server: { condition: service_healthy }
@@ -210,3 +230,4 @@ networks:
 
 volumes:
   mysql-data:
+

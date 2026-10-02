@@ -10,11 +10,11 @@ WORKDIR /app
 # pehle sirf pom.xml copy -> dependency layer cache hoti hai.
 # Agar sirf code badla, deps dobara download nahi honge (fast rebuild).
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
+RUN --mount=type=cache,target=/root/.m2 mvn dependency:go-offline -B
 
 # ab source copy karke package banao
 COPY src ./src
-RUN mvn clean package -DskipTests -B
+RUN --mount=type=cache,target=/root/.m2 mvn clean package -DskipTests -B
 
 # ---------- Stage 2: RUNTIME ----------
 # Patli image (sirf JRE) -> final image chhoti + secure
