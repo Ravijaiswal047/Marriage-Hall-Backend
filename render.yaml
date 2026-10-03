@@ -1,0 +1,95 @@
+services:
+  # 1. Eureka Discovery Server
+  - type: web
+    name: mh-discovery-server
+    env: docker
+    dockerfilePath: ./discovery-server/Dockerfile
+    envVars:
+      - key: SERVER_PORT
+        value: 8761
+      - key: JAVA_TOOL_OPTIONS
+        value: "-Xms128m -Xmx256m"
+
+  # 2. Config Server
+  - type: web
+    name: mh-config-server
+    env: docker
+    dockerfilePath: ./config-server/Dockerfile
+    envVars:
+      - key: SERVER_PORT
+        value: 8888
+      - key: JAVA_TOOL_OPTIONS
+        value: "-Xms128m -Xmx256m"
+
+  # 3. Auth Service
+  - type: web
+    name: mh-auth-service
+    env: docker
+    dockerfilePath: ./auth-service/Dockerfile
+    envVars:
+      - key: SERVER_PORT
+        value: 9090
+      - key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+        value: http://mh-discovery-server:8761/eureka
+      - key: CONFIG_SERVER_URL
+        value: http://mh-config-server:8888
+      - key: JAVA_TOOL_OPTIONS
+        value: "-Xms128m -Xmx384m"
+
+  # 4. Hall Service
+  - type: web
+    name: mh-hall-service
+    env: docker
+    dockerfilePath: ./hall-service/Dockerfile
+    envVars:
+      - key: SERVER_PORT
+        value: 8087
+      - key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+        value: http://mh-discovery-server:8761/eureka
+      - key: CONFIG_SERVER_URL
+        value: http://mh-config-server:8888
+      - key: JAVA_TOOL_OPTIONS
+        value: "-Xms128m -Xmx384m"
+
+  # 5. Booking Service
+  - type: web
+    name: mh-booking-service
+    env: docker
+    dockerfilePath: ./booking-service/Dockerfile
+    envVars:
+      - key: SERVER_PORT
+        value: 8082
+      - key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+        value: http://mh-discovery-server:8761/eureka
+      - key: JAVA_TOOL_OPTIONS
+        value: "-Xms128m -Xmx384m"
+
+  # 6. Review Service
+  - type: web
+    name: mh-review-service
+    env: docker
+    dockerfilePath: ./review-service/Dockerfile
+    envVars:
+      - key: SERVER_PORT
+        value: 8086
+      - key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+        value: http://mh-discovery-server:8761/eureka
+      - key: JAVA_TOOL_OPTIONS
+        value: "-Xms128m -Xmx384m"
+
+  # 7. API Gateway (Public Gateway Entrypoint)
+  - type: web
+    name: mh-api-gateway
+    env: docker
+    dockerfilePath: ./api-gateway/Dockerfile
+    envVars:
+      - key: SERVER_PORT
+        value: 8081
+      - key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+        value: http://mh-discovery-server:8761/eureka
+      - key: CONFIG_SERVER_URL
+        value: http://mh-config-server:8888
+      - key: APP_CORS_ALLOWED_ORIGINS
+        value: "https://marriagehall-frontend.pages.dev,http://localhost:5173"
+      - key: JAVA_TOOL_OPTIONS
+        value: "-Xms128m -Xmx256m"
